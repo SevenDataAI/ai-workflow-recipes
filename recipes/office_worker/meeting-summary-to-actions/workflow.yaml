@@ -1,0 +1,88 @@
+name: meeting-summary-to-actions
+version: 0.1.0
+owner: SevenDataAI
+scenario: office_worker
+
+problem:
+  current_state: "会议纪要只有总结，没有可执行计划。"
+  pain_points:
+    - "待办不清楚"
+    - "决策和讨论混在一起"
+    - "风险没有显式暴露"
+    - "给上级汇报时还要重新组织语言"
+  expected_outcome: "把会议记录转成行动项、风险点和汇报摘要。"
+
+inputs:
+  - name: meeting_transcript
+    type: text
+    required: true
+    description: "会议转写或会议纪要"
+
+steps:
+  - id: context_extract
+    name: 背景提取
+    type: ai
+    description: "提取会议背景、问题来源和目标。"
+    input: ["meeting_transcript"]
+    output: ["context"]
+    risk: ["背景遗漏"]
+
+  - id: decision_extract
+    name: 决策提取
+    type: ai
+    description: "只提取明确形成共识的决策。"
+    input: ["meeting_transcript"]
+    output: ["decisions"]
+    risk: ["把讨论误判成决策"]
+
+  - id: action_extract
+    name: 行动项提取
+    type: ai
+    description: "提取责任人、动作、交付物、截止时间。"
+    input: ["meeting_transcript", "decisions"]
+    output: ["actions"]
+    risk: ["缺责任人", "缺截止时间"]
+
+  - id: action_rule_check
+    name: 行动项规则检查
+    type: rule
+    description: "检查每个行动项是否具备责任人、动作和交付物。"
+    input: ["actions"]
+    output: ["checked_actions"]
+    risk: ["行动项不可执行"]
+
+  - id: manager_update
+    name: 汇报摘要生成
+    type: ai
+    description: "生成一段可以直接发给上级的同步话术。"
+    input: ["context", "decisions", "checked_actions"]
+    output: ["manager_message"]
+    risk: ["表达过度承诺"]
+
+rules:
+  - id: no_owner_no_pass
+    level: P1
+    description: "没有责任人的行动项必须标记待确认。"
+    action: warn
+  - id: discussion_not_decision
+    level: P0
+    description: "不能把讨论内容写成已经决策。"
+    action: block
+
+human_review:
+  required: true
+  review_points:
+    - "决策是否真实形成"
+    - "行动项是否有责任人"
+    - "汇报话术是否符合实际进展"
+
+outputs:
+  - name: action_plan
+    type: markdown
+    description: "会议行动计划"
+
+bad_cases:
+  - case: "把领导建议写成已经确定要做"
+    reason: "模型没有区分建议和决策"
+    fix: "增加决策判定规则：必须出现明确确认或任务安排"
+

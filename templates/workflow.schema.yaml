@@ -1,0 +1,50 @@
+name: string
+version: string
+owner: string
+scenario: string
+
+problem:
+  current_state: string
+  pain_points:
+    - string
+  expected_outcome: string
+
+inputs:
+  - name: string
+    type: text | file | table | url | database | api
+    required: true
+    description: string
+
+steps:
+  - id: string
+    name: string
+    type: ai | rule | tool | human_review | output
+    description: string
+    input:
+      - string
+    output:
+      - string
+    risk:
+      - string
+
+rules:
+  - id: string
+    level: P0 | P1 | P2
+    description: string
+    action: block | warn | review
+
+human_review:
+  required: true
+  review_points:
+    - string
+
+outputs:
+  - name: string
+    type: markdown | json | table | document | message
+    description: string
+
+bad_cases:
+  - case: string
+    reason: string
+    fix: string
+

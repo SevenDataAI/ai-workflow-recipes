@@ -1,0 +1,95 @@
+name: csv-insight-report
+version: 0.1.0
+owner: SevenDataAI
+scenario: data_analyst
+
+problem:
+  current_state: "直接让 AI 根据 CSV 写报告，结论不可复核。"
+  pain_points:
+    - "AI 可能编造业务原因"
+    - "没有数据质量检查"
+    - "指标口径不清楚"
+    - "结论没有计算依据"
+  expected_outcome: "生成带复核口径的数据分析报告。"
+
+inputs:
+  - name: csv_file
+    type: file
+    required: true
+    description: "CSV 或 Excel 明细数据"
+  - name: business_context
+    type: text
+    required: false
+    description: "业务背景和分析目标"
+
+steps:
+  - id: profile_data
+    name: 数据画像
+    type: tool
+    description: "统计行数、列数、字段类型、空值、重复值。"
+    input: ["csv_file"]
+    output: ["data_profile"]
+    risk: ["文件编码错误", "字段类型识别错误"]
+
+  - id: quality_check
+    name: 数据质量检查
+    type: rule
+    description: "检查空值、重复、极端值、字段缺失。"
+    input: ["data_profile"]
+    output: ["quality_report"]
+    risk: ["异常数据污染结论"]
+
+  - id: metric_compute
+    name: 指标计算
+    type: tool
+    description: "按明确规则计算核心指标和分组指标。"
+    input: ["csv_file", "business_context"]
+    output: ["metrics_table"]
+    risk: ["口径不清"]
+
+  - id: insight_generation
+    name: 分析结论生成
+    type: ai
+    description: "基于指标表和质量报告生成结论，不允许脱离数据编造。"
+    input: ["metrics_table", "quality_report", "business_context"]
+    output: ["insights"]
+    risk: ["把相关性写成因果"]
+
+  - id: review_pack
+    name: 复核包生成
+    type: output
+    description: "输出报告和对应复核表。"
+    input: ["insights", "metrics_table", "quality_report"]
+    output: ["report", "review_table"]
+    risk: ["报告和复核表不一致"]
+
+rules:
+  - id: no_claim_without_metric
+    level: P0
+    description: "没有指标支撑的结论不能写进报告。"
+    action: block
+  - id: correlation_not_causation
+    level: P1
+    description: "不能把相关性直接写成因果。"
+    action: warn
+
+human_review:
+  required: true
+  review_points:
+    - "业务解释是否符合实际"
+    - "异常原因是否需要进一步查证"
+    - "是否有敏感数据"
+
+outputs:
+  - name: insight_report
+    type: markdown
+    description: "数据分析报告"
+  - name: review_table
+    type: table
+    description: "支撑结论的指标和计算口径"
+
+bad_cases:
+  - case: "AI 说销量下降是因为促销减少，但数据里没有促销字段"
+    reason: "模型基于经验猜测"
+    fix: "要求每个原因必须绑定字段或标记为待验证假设"
+

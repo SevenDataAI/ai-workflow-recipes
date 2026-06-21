@@ -1,0 +1,105 @@
+name: video-script-to-publish-plan
+version: 0.1.0
+owner: SevenDataAI
+scenario: content_creator
+
+problem:
+  current_state: "每条视频都临时写标题、脚本、平台文案和私信回复，风格不稳定，承接链路断。"
+  pain_points:
+    - "选题和商业化产品没有绑定"
+    - "脚本有观点但没有转化入口"
+    - "平台文案重复手写"
+    - "私信回复没有分层"
+  expected_outcome: "从一个选题生成完整发布物料，并保留人工审稿节点。"
+
+inputs:
+  - name: topic
+    type: text
+    required: true
+    description: "视频选题"
+  - name: target_audience
+    type: text
+    required: true
+    description: "目标受众"
+  - name: product_hook
+    type: text
+    required: false
+    description: "要引导的资料、知识库、咨询或工具"
+
+steps:
+  - id: audience_analysis
+    name: 受众分析
+    type: ai
+    description: "判断这个选题最容易吸引哪类人，以及他们当前卡在哪里。"
+    input: ["topic", "target_audience"]
+    output: ["audience_profile", "pain_points"]
+    risk: ["受众过宽", "痛点过虚"]
+
+  - id: thesis_extraction
+    name: 核心观点提炼
+    type: ai
+    description: "把选题压缩成一句可传播观点。"
+    input: ["topic", "pain_points"]
+    output: ["core_thesis", "counter_opinion"]
+    risk: ["观点像口号", "没有反常识"]
+
+  - id: script_generation
+    name: 口播脚本生成
+    type: ai
+    description: "生成 5-8 分钟口播稿，包含场景、问题、拆解、方案、结尾引导。"
+    input: ["core_thesis", "product_hook"]
+    output: ["script"]
+    risk: ["内容空泛", "只有概念没有例子"]
+
+  - id: platform_copy
+    name: 平台文案生成
+    type: ai
+    description: "生成抖音、B站、小红书三套发布文案。"
+    input: ["script", "product_hook"]
+    output: ["douyin_copy", "bilibili_copy", "xiaohongshu_copy"]
+    risk: ["三端文案过于相似"]
+
+  - id: compliance_check
+    name: 发布前规则检查
+    type: rule
+    description: "检查是否有夸大承诺、敏感信息、无依据数字。"
+    input: ["script", "douyin_copy", "bilibili_copy", "xiaohongshu_copy"]
+    output: ["check_result"]
+    risk: ["过度营销", "泄露内部信息"]
+
+  - id: human_review
+    name: 人工审稿
+    type: human_review
+    description: "确认案例真实、语气自然、引导不生硬。"
+    input: ["check_result"]
+    output: ["approved_materials"]
+    risk: ["跳过人工审稿直接发布"]
+
+rules:
+  - id: no_fake_claim
+    level: P0
+    description: "不能承诺涨粉、转化、收益的确定结果。"
+    action: block
+  - id: require_private_message_script
+    level: P1
+    description: "必须输出私信承接话术。"
+    action: warn
+
+human_review:
+  required: true
+  review_points:
+    - "标题是否匹配内容"
+    - "案例是否真实"
+    - "引导是否自然"
+    - "是否需要删除内部信息"
+
+outputs:
+  - name: publish_package
+    type: document
+    description: "完整发布物料包"
+
+bad_cases:
+  - case: "脚本只讲概念，没有真实场景"
+    reason: "缺少输入案例和反面样本"
+    fix: "补充真实对话、截图、日志、业务场景"
+

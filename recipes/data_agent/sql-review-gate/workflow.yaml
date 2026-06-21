@@ -1,0 +1,116 @@
+name: sql-review-gate
+version: 0.1.0
+owner: SevenDataAI
+scenario: data_agent
+
+problem:
+  current_state: "AI 生成 SQL 后直接执行，缺少审查门禁。"
+  pain_points:
+    - "SQL 能跑但口径可能错"
+    - "缺分区导致高成本查询"
+    - "敏感字段可能被直接查出"
+    - "join 后指标可能被放大"
+  expected_outcome: "SQL 执行前经过规则审查和必要的人工确认。"
+
+inputs:
+  - name: user_question
+    type: text
+    required: true
+    description: "用户原始问题"
+  - name: generated_sql
+    type: text
+    required: true
+    description: "AI 生成 SQL"
+  - name: metric_catalog
+    type: table
+    required: false
+    description: "指标口径库"
+  - name: schema_metadata
+    type: table
+    required: false
+    description: "表字段元数据"
+
+steps:
+  - id: parse_sql
+    name: SQL 解析
+    type: tool
+    description: "解析表、字段、where、join、group by、limit。"
+    input: ["generated_sql"]
+    output: ["sql_ast", "tables", "fields"]
+    risk: ["解析失败"]
+
+  - id: partition_check
+    name: 分区检查
+    type: rule
+    description: "DWD/DWS/ADS 大表必须带分区条件。"
+    input: ["sql_ast", "tables"]
+    output: ["partition_result"]
+    risk: ["全表扫描"]
+
+  - id: sensitive_field_check
+    name: 敏感字段检查
+    type: rule
+    description: "手机号、地址、身份证、明细导出必须拦截或审批。"
+    input: ["fields"]
+    output: ["permission_result"]
+    risk: ["数据泄露"]
+
+  - id: metric_check
+    name: 指标口径检查
+    type: rule
+    description: "检查 GMV、订单数、退款率等指标是否使用正确字段和粒度。"
+    input: ["user_question", "generated_sql", "metric_catalog"]
+    output: ["metric_result"]
+    risk: ["口径错误"]
+
+  - id: ai_review
+    name: AI 解释与修正建议
+    type: ai
+    description: "基于规则结果生成解释和修正建议。"
+    input: ["generated_sql", "partition_result", "permission_result", "metric_result"]
+    output: ["review_reason", "safe_sql_suggestion"]
+    risk: ["AI 解释过度自信"]
+
+  - id: decision
+    name: 执行决策
+    type: rule
+    description: "根据阻断规则判断允许执行、拒绝或进入人工审核。"
+    input: ["partition_result", "permission_result", "metric_result"]
+    output: ["decision"]
+    risk: ["错误放行"]
+
+rules:
+  - id: require_partition
+    level: P0
+    description: "查询大表必须带分区条件。"
+    action: block
+  - id: forbid_sensitive_fields
+    level: P0
+    description: "禁止直接查询手机号、身份证、地址等敏感字段。"
+    action: block
+  - id: gmv_not_order_amount
+    level: P0
+    description: "支付 GMV 不能直接使用下单金额字段。"
+    action: block
+  - id: order_count_distinct
+    level: P1
+    description: "商品行事实表统计订单数必须 count distinct order_id。"
+    action: warn
+
+human_review:
+  required: true
+  review_points:
+    - "P0 阻断是否正确"
+    - "safe_sql 是否真的符合口径"
+    - "是否需要审批"
+
+outputs:
+  - name: sql_review_result
+    type: json
+    description: "SQL 审查结果"
+
+bad_cases:
+  - case: "AI 用 sum(order_amount) 计算支付 GMV"
+    reason: "模型混淆下单金额和支付成功金额"
+    fix: "口径库明确 pay_gmv = sum(sku_pay_amount)，并加入 P0 规则"
+

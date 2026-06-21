@@ -154,6 +154,13 @@ AI 负责判断、生成和解释。
 | LangGraph | 有状态、多节点、可恢复的 Agent 编排 |
 | 飞书 / 企业微信 | 消息触达、审批、文档沉淀、团队协同 |
 
+平台落地说明：
+
+- [Dify](./platforms/dify/)
+- [n8n](./platforms/n8n/)
+- [Claude SDK](./platforms/claude-sdk/)
+- [Codex](./platforms/codex/)
+
 ## How to Use
 
 1. 选择一个接近你场景的 recipe。

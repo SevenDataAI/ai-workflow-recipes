@@ -1,0 +1,95 @@
+name: local-file-to-knowledge-asset
+version: 0.1.0
+owner: SevenDataAI
+scenario: agent_engineering
+
+problem:
+  current_state: "大量本地资料没有结构化整理，无法复用到内容和知识库。"
+  pain_points:
+    - "素材分散在不同文件夹"
+    - "不知道哪些内容值得写"
+    - "容易泄露内部信息"
+    - "每次写作都重新找资料"
+  expected_outcome: "把本地文件转成结构化知识资产。"
+
+inputs:
+  - name: folder_path
+    type: file
+    required: true
+    description: "待扫描文件夹"
+  - name: topic_filter
+    type: text
+    required: false
+    description: "关注主题，如 AI 工作流、数据分析、知识库"
+
+steps:
+  - id: scan_files
+    name: 文件扫描
+    type: tool
+    description: "遍历文件夹，提取文件名、路径、类型、大小、更新时间。"
+    input: ["folder_path"]
+    output: ["file_index"]
+    risk: ["扫描到不该处理的私密文件"]
+
+  - id: classify_files
+    name: 文件分类
+    type: ai
+    description: "按主题、用途、内容类型对文件进行分类。"
+    input: ["file_index", "topic_filter"]
+    output: ["classified_files"]
+    risk: ["分类过粗"]
+
+  - id: sensitive_check
+    name: 敏感内容检查
+    type: rule
+    description: "检查是否包含客户名、内部系统、手机号、账号、密钥等敏感信息。"
+    input: ["classified_files"]
+    output: ["sensitive_hits"]
+    risk: ["脱敏不完整"]
+
+  - id: extract_cards
+    name: 知识卡片生成
+    type: ai
+    description: "从文件摘要中提炼可复用观点、案例和选题。"
+    input: ["classified_files", "sensitive_hits"]
+    output: ["knowledge_cards"]
+    risk: ["脱离原文编造"]
+
+  - id: asset_index
+    name: 资产索引生成
+    type: output
+    description: "输出主题索引、素材卡片和后续写作建议。"
+    input: ["knowledge_cards"]
+    output: ["asset_index"]
+    risk: ["索引不可维护"]
+
+rules:
+  - id: no_secret_output
+    level: P0
+    description: "敏感信息不能进入最终知识卡片。"
+    action: block
+  - id: keep_source_path
+    level: P1
+    description: "每张素材卡必须保留来源路径，便于复核。"
+    action: warn
+
+human_review:
+  required: true
+  review_points:
+    - "是否需要脱敏"
+    - "是否可以对外发布"
+    - "是否值得沉淀进知识库"
+
+outputs:
+  - name: asset_index
+    type: markdown
+    description: "知识资产索引"
+  - name: knowledge_cards
+    type: document
+    description: "可复用素材卡片"
+
+bad_cases:
+  - case: "把内部项目名和客户信息写进公开文章"
+    reason: "没有做敏感信息扫描"
+    fix: "引入脱敏规则和人工确认节点"
+

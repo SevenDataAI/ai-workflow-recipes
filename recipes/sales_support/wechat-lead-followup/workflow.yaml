@@ -1,0 +1,95 @@
+name: wechat-lead-followup
+version: 0.1.0
+owner: SevenDataAI
+scenario: sales_support
+
+problem:
+  current_state: "用户加微信后人工随意回复，试读链接发出去后容易断联。"
+  pain_points:
+    - "没有先判断用户需求"
+    - "资料和用户关注点不匹配"
+    - "销售感过强"
+    - "没有记录线索来源和跟进状态"
+  expected_outcome: "生成自然回复、匹配资料、记录线索并提醒跟进。"
+
+inputs:
+  - name: user_message
+    type: text
+    required: true
+    description: "用户微信消息"
+  - name: source
+    type: text
+    required: false
+    description: "用户来源，如抖音、B站、小红书、GitHub"
+
+steps:
+  - id: classify_intent
+    name: 意图分类
+    type: ai
+    description: "判断用户是资料型、咨询型、价格型、犹豫型还是企业型。"
+    input: ["user_message", "source"]
+    output: ["intent", "confidence"]
+    risk: ["把咨询型误判为资料型"]
+
+  - id: choose_next_action
+    name: 下一步动作选择
+    type: rule
+    description: "根据意图选择发试读、追问背景、介绍完整版或约沟通。"
+    input: ["intent"]
+    output: ["next_action"]
+    risk: ["过早推销"]
+
+  - id: draft_reply
+    name: 回复草稿
+    type: ai
+    description: "生成自然、不压迫的微信回复。"
+    input: ["user_message", "intent", "next_action"]
+    output: ["reply"]
+    risk: ["语气像机器人", "自问自答"]
+
+  - id: human_review
+    name: 人工确认
+    type: human_review
+    description: "发送前人工确认语气和资料是否匹配。"
+    input: ["reply"]
+    output: ["approved_reply"]
+    risk: ["错误发送付款入口"]
+
+  - id: record_lead
+    name: 线索记录
+    type: tool
+    description: "把用户来源、意图、关注点和跟进状态写入表格。"
+    input: ["source", "intent", "next_action"]
+    output: ["lead_record"]
+    risk: ["没有后续跟进"]
+
+rules:
+  - id: no_direct_payment_link_before_interest
+    level: P1
+    description: "用户没有明确表达完整购买意向前，不直接发付款入口。"
+    action: warn
+  - id: no_guaranteed_result
+    level: P0
+    description: "不能承诺涨薪、转化、面试通过等确定结果。"
+    action: block
+
+human_review:
+  required: true
+  review_points:
+    - "回复是否自然"
+    - "是否匹配用户真实关注点"
+    - "是否销售感过强"
+
+outputs:
+  - name: reply
+    type: message
+    description: "可发送的微信回复"
+  - name: lead_record
+    type: table
+    description: "线索记录"
+
+bad_cases:
+  - case: "用户只说求资料，直接发价格和购买入口"
+    reason: "没有做需求确认"
+    fix: "先发试读，再问关注方向，等用户明确后再介绍完整版"
+

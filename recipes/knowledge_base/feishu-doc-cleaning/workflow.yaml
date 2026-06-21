@@ -1,0 +1,96 @@
+name: feishu-doc-cleaning
+version: 0.1.0
+owner: SevenDataAI
+scenario: knowledge_base
+
+problem:
+  current_state: "知识库文章存在结构乱、AI味重、内部话术混入、缺少图和案例的问题。"
+  pain_points:
+    - "用户看完觉得像 AI 生成"
+    - "缺少真实场景和步骤"
+    - "格式影响阅读"
+    - "内部销售策略可能被写进文章"
+  expected_outcome: "把草稿重构成可售卖知识库文章。"
+
+inputs:
+  - name: article_text
+    type: text
+    required: true
+    description: "飞书文章正文"
+
+steps:
+  - id: structure_scan
+    name: 结构扫描
+    type: ai
+    description: "识别标题层级、段落密度、缺失模块和内部话术。"
+    input: ["article_text"]
+    output: ["structure_issues"]
+    risk: ["漏掉内部话术"]
+
+  - id: forbidden_phrase_check
+    name: 禁用表达检查
+    type: rule
+    description: "检查是否出现内部提示、销售话术、AI 处理痕迹。"
+    input: ["article_text"]
+    output: ["forbidden_phrases"]
+    risk: ["影响用户信任"]
+
+  - id: rewrite_article
+    name: 重写文章
+    type: ai
+    description: "按真实场景、步骤、案例、风险、交付物重写文章。"
+    input: ["article_text", "structure_issues", "forbidden_phrases"]
+    output: ["rewritten_article"]
+    risk: ["只在末尾追加内容，没有整体重构"]
+
+  - id: diagram_plan
+    name: 图示规划
+    type: ai
+    description: "为文章生成适合的流程图或架构图说明。"
+    input: ["rewritten_article"]
+    output: ["diagram_plan"]
+    risk: ["图和正文无关"]
+
+  - id: final_check
+    name: 发布检查
+    type: rule
+    description: "检查是否包含场景、步骤、案例、风险、交付物。"
+    input: ["rewritten_article", "diagram_plan"]
+    output: ["publish_check"]
+    risk: ["文章仍然太空"]
+
+rules:
+  - id: no_internal_meta
+    level: P0
+    description: "禁止出现内部处理说明和销售策略。"
+    action: block
+  - id: require_real_scenario
+    level: P1
+    description: "文章必须包含真实业务场景。"
+    action: warn
+  - id: require_steps
+    level: P1
+    description: "文章必须包含可执行步骤。"
+    action: warn
+
+human_review:
+  required: true
+  review_points:
+    - "是否像真人经验"
+    - "是否可落地"
+    - "是否有内部话术泄露"
+    - "是否值得付费用户阅读"
+
+outputs:
+  - name: rewritten_article
+    type: document
+    description: "重构后的知识库文章"
+  - name: diagram_plan
+    type: markdown
+    description: "图示设计说明"
+
+bad_cases:
+  - case: "文章里出现：本页已做生产级重排"
+    reason: "内部处理标记被写入用户可见内容"
+    fix: "发布前做禁用表达扫描"
+

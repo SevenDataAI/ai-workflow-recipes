@@ -102,6 +102,45 @@ AI 负责判断、生成和解释。
 - AI 问数 / NL2SQL 项目
 - 企业 Data Agent 团队
 
+### 5. Sales Support
+
+[`wechat-lead-followup`](./recipes/sales_support/wechat-lead-followup/)
+
+把微信私信线索从“随手回复”变成意图识别、资料匹配、人工确认和后续跟进。
+
+适合：
+
+- 知识付费
+- 咨询服务
+- 私域转化
+- 个人 IP
+
+### 6. Knowledge Base
+
+[`feishu-doc-cleaning`](./recipes/knowledge_base/feishu-doc-cleaning/)
+
+把飞书知识库草稿重构成更适合交付的文章，重点处理结构、AI 味、内部话术、案例和图示规划。
+
+适合：
+
+- 付费知识库
+- 企业内部知识库
+- 课程资料
+- SOP 文档
+
+### 7. Agent Engineering
+
+[`local-file-to-knowledge-asset`](./recipes/agent_engineering/local-file-to-knowledge-asset/)
+
+把本地文件夹里的项目资料、会议纪要、历史方案和素材整理成可复用知识资产。
+
+适合：
+
+- 长期写作
+- 知识库建设
+- 个人资料库
+- 内容选题池
+
 ## Platform Mapping
 
 同一个 workflow 可以映射到不同工具：
@@ -151,4 +190,3 @@ Prompt 不是产品。
 - 可持续迭代的系统
 
 这个仓库会持续沉淀真实场景下的 AI workflow 模板。
-
